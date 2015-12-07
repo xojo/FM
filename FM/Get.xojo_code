@@ -77,9 +77,34 @@ Protected Module Get
 		End Function
 	#tag EndMethod
 
-	#tag Method, Flags = &h1
+	#tag Method, Flags = &h1, CompatibilityFlags = (TargetIOS and (Target32Bit or Target64Bit))
 		Protected Function ScreenScaleFactor() As Double
-		  #Pragma Warning "Not Implemented"
+		  #If TargetiOS Then
+		    Declare function NSClassFromString Lib "Foundation" (aClassName As CFStringRef) As Ptr
+		    #If Target32Bit Then
+		      Declare Function scale Lib "Foundation" Selector "scale" (classRef As Ptr) As Single
+		    #Else
+		      Declare Function scale Lib "Foundation" Selector "scale" (classRef As Ptr) As Double
+		    #Endif
+		    Declare Function mainScreen Lib "Foundation" Selector "mainScreen" (classRef As Ptr) As Ptr
+		    
+		    Return scale(mainScreen(NSClassFromString("UIScreen")))
+		  #Endif
+		  
+		  Return -1
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h1, CompatibilityFlags = (TargetDesktop and (Target32Bit or Target64Bit))
+		Protected Function ScreenScaleFactor(w As Window) As Double
+		  #If TargetMacOS
+		    Try
+		      Soft Declare Function BackingScaleFactor Lib "AppKit" Selector "backingScaleFactor" (target As WindowPtr) As Double
+		      Return BackingScaleFactor(w)
+		    Catch e As ObjCException
+		      Return 1
+		    End Try
+		  #Endif
 		End Function
 	#tag EndMethod
 

@@ -138,11 +138,10 @@ Protected Module FM
 
 	#tag Method, Flags = &h1
 		Protected Function FV(payment As Currency, interestRate As Currency, periods As Integer) As Currency
-		  #Pragma Warning "Not Implemented"
-		  
-		  // fv = payment * ((1 + interestRate)^periods - 1) / interestRate
-		  
 		  // also see NPV, PMT, PV
+		  
+		  Dim fv As Double = payment * ((1 + interestRate)^periods - 1) / interestRate
+		  Return fv
 		End Function
 	#tag EndMethod
 
@@ -197,6 +196,36 @@ Protected Module FM
 	#tag Method, Flags = &h1
 		Protected Function Int(value As Double) As Integer
 		  Return CType(value, Integer)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsSingleQuoteCharacter(charVal As Integer) As Boolean
+		  if charVal = 39 or charVal = 213 or charVal = 8217 then
+		    return true
+		  else
+		    return false
+		  end if
+		  
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsWordCharacter(charVal As Integer) As Boolean
+		  dim isWordChar as boolean
+		  
+		  select case true
+		  case charVal < 48 // 0
+		  case charVal > 57 and charVal < 65
+		  case charVal > 90 and charVal < 97
+		  case charVal > 122 and charVal < 192
+		  else // Anything not in those ranges
+		    isWordChar = true
+		  end
+		  
+		  return isWordChar
+		  
 		End Function
 	#tag EndMethod
 
@@ -551,8 +580,63 @@ Protected Module FM
 	#tag EndMethod
 
 	#tag Method, Flags = &h1
-		Protected Function WordCount(t As Text) As Integer
-		  #Pragma Warning "Not Implemented"
+		Protected Function WordCount(src As String) As Integer
+		  // From M_String: http://www.mactechnologies.com/index.php?page=downloads
+		  // Used with permission of MacTechnologies Consulting,
+		  // although I had to fix the spacing. :)
+		  
+		  // Counts words in text.
+		  // Words comprise of any letter or number.
+		  // Once we get into unicode characters, what's considered a letter is dicey.
+		  // A word may be begin, end or contain a single-quote character as long
+		  // as it is bordered on one side with a letter or number.
+		  
+		  // Massage the source
+		  src = src.Trim.ConvertEncoding(Encodings.UTF8)
+		  
+		  If src.LenB = 0 Then Return 0
+		  
+		  // Break it into characters
+		  Dim chars() As String = src.Split("")
+		  chars.Append " " // Will properly count the last word
+		  
+		  Dim counter As Integer
+		  Dim inWord As Boolean
+		  Dim singleQuoteFound As Boolean
+		  
+		  Dim char As String
+		  Dim charVal As Integer
+		  
+		  For i As Integer = 0 To chars.Ubound
+		    char = chars(i)
+		    
+		    // Determine if this is a word character
+		    charVal = char.Asc
+		    
+		    If IsSingleQuoteCharacter(charVal) Then
+		      If singleQuoteFound Then // Back to back quotes
+		        If inWord Then
+		          counter = counter + 1
+		          inWord = False
+		        End If
+		      Else
+		        singleQuoteFound = True
+		        // This won't change the state of inWord
+		      End If
+		    Else // Not a single quote, so what is it?
+		      singleQuoteFound = False
+		      
+		      If IsWordCharacter(charVal) Then
+		        inWord = True
+		      Elseif inWord Then // Not a word char or a single quote
+		        counter = counter + 1
+		        inWord = False
+		      End If
+		    End If
+		  Next
+		  
+		  Return counter
+		  
 		End Function
 	#tag EndMethod
 
